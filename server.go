@@ -17,7 +17,8 @@ import (
 )
 
 type ShortcutHandler struct {
-	index shortcut.Index
+	index        shortcut.Index
+	formTemplate *template.Template
 }
 
 // Get looks up the given shortcut requested in the index.
@@ -45,21 +46,16 @@ func (s ShortcutHandler) Get(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	} else {
-		ShowForm(w, r)
+		s.ShowForm(w, r)
 	}
 }
 
-func ShowForm(w http.ResponseWriter, r *http.Request) {
+func (s ShortcutHandler) ShowForm(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	shortcut := vars["shortcut"]
-	t := template.Must(template.New("index").Parse(`<html><body>
-<form action="/" method="POST">
-<center>
-Url to shorten: <input type="text" name="shortform" value="{{.}}">
-Redirect text <input type="text" name="url">
-<input type="submit">
-</form></center>`))
-	t.Execute(w, shortcut)
+	s.formTemplate.Execute(w, struct {
+		Shortcut string
+	}{shortcut})
 }
 
 // Posting will save the "first" url found as the "first" shortform found.
@@ -90,10 +86,13 @@ func (s ShortcutHandler) Post(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
-	handler := ShortcutHandler{shortcut.NewIndex("links.bleve")}
+	handler := ShortcutHandler{
+		shortcut.NewIndex("links.bleve"),
+		template.Must(template.ParseFiles("templates/form.tmpl")),
+	}
 	r := mux.NewRouter()
 
-	r.HandleFunc("/index.html", ShowForm)
+	r.HandleFunc("/index.html", handler.ShowForm)
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/index.html", http.StatusMovedPermanently)
 	}).Methods("GET")
