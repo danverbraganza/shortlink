@@ -36,20 +36,18 @@ func (s ShortcutHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 	log.Print(results)
 
-	if len(results) == 1 {
+	switch len(results) {
+	case 0:
+		s.ShowForm(w, r)
+	case 1:
 		http.Redirect(w, r, results[0], http.StatusSeeOther)
-	} else {
-		// TODO(danver): More than one result. Do something clever.
-	}
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	} else {
+	default:
+		// TODO(danver): Handle the multiple case.
 		s.ShowForm(w, r)
 	}
 }
 
+// ShowForm shows a nice form where the user can enter a new url.
 func (s ShortcutHandler) ShowForm(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	shortcut := vars["shortcut"]
@@ -58,15 +56,18 @@ func (s ShortcutHandler) ShowForm(w http.ResponseWriter, r *http.Request) {
 	}{shortcut})
 }
 
-// Posting will save the "first" url found as the "first" shortform found.
+// Post saves the "first" url found as the "first" shortform found.
 // You may pass shortforms as form params or in the url.
 func (s ShortcutHandler) Post(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	shortform, ok := vars["shortform"]
 	r.ParseForm()
+
+	shortform, ok := vars["shortform"]
+
 	if !ok {
-		sc, ok := r.Form["shortform"]
-		if !ok || len(sc) == 0 {
+		// Shortform not provided in url: find it in the form.
+		sc := r.Form["shortform"]
+		if len(sc) == 0 {
 			http.Error(w, "Shortcut was not supplied", http.StatusBadRequest)
 			return
 		}
@@ -74,15 +75,15 @@ func (s ShortcutHandler) Post(w http.ResponseWriter, r *http.Request) {
 	}
 
 	urls := r.Form["url"]
-
-	if len(urls) > 0 {
-		url := urls[0]
-		log.Print("Setting ", shortform, " to ", url, "\n")
-		normalizedUrl := s.index.SetShortcut(url, shortform)
-		http.Redirect(w, r, normalizedUrl, http.StatusSeeOther)
-	} else {
+	if len(urls) == 0 {
 		http.Error(w, "URL was not supplied", http.StatusBadRequest)
+		return
 	}
+
+	url := urls[0]
+	log.Print("Setting ", shortform, " to ", url, "\n")
+	normalizedUrl := s.index.SetShortcut(url, shortform)
+	http.Redirect(w, r, normalizedUrl, http.StatusSeeOther)
 }
 
 func main() {
