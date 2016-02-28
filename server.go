@@ -7,58 +7,47 @@ Author: Danver Braganza
 package main
 
 import (
-//	"fmt"
+	"html/template"
 	"log"
 	"net/http"
-	"net/url"
-	"os"
-	"html/template"
 
 	"github.com/gorilla/mux"
-	"github.com/blevesearch/bleve"
+
+	"github.com/danverbraganza/shortlink/shortcut"
 )
 
-
-var index = connectToBleve("links.bleve")
-
-type Shortcut struct {
-	Url string
-	ShortForm string
-	Description string
+type ShortcutHandler struct {
+	index shortcut.Index
 }
 
-// FindShortcut looks up the given shortcut requested in a map.
-func FindShortcut(w http.ResponseWriter, r *http.Request) {
+// Get looks up the given shortcut requested in the index.
+func (s ShortcutHandler) Get(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	query := bleve.NewQueryStringQuery(vars["shortcut"])
-	searchRequest := bleve.NewSearchRequest(query)
-	searchResult, err := index.Search(searchRequest)
-	if err != nil {
-		http.Error(w, err.Error(), 501)
-	}
 
-	print(searchResult.String())
+	query := vars["shortcut"]
 
-	if len(searchResult.Hits) == 1 {
-		http.Redirect(w, r, searchResult.Hits[0].ID, 307)
-	}
+	results, err := s.index.FindShortcut(query)
 
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
 
+	log.Print(results)
+
+	if len(results) == 1 {
+		http.Redirect(w, r, results[0], http.StatusSeeOther)
+	} else {
+		// TODO(danver): More than one result. Do something clever.
+	}
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	} else {
 		ShowForm(w, r)
 	}
 }
-
-// NormalizeUrl takes the urls that we get and puts some sane defaults to it.
-func NormalizeUrl(s string) string {
-	u, _ := url.Parse(s)
-	if u.Scheme == "" {
-		u.Scheme = "http"
-	}
-	return u.String()
-}
-
 
 func ShowForm(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
@@ -66,73 +55,53 @@ func ShowForm(w http.ResponseWriter, r *http.Request) {
 	t := template.Must(template.New("index").Parse(`<html><body>
 <form action="/" method="POST">
 <center>
-Url to shorten: <input type="text" name="shortcut" value="{{.}}">
+Url to shorten: <input type="text" name="shortform" value="{{.}}">
 Redirect text <input type="text" name="url">
 <input type="submit">
 </form></center>`))
 	t.Execute(w, shortcut)
 }
 
-
-// SetShortcut will put the first url in the form as a shortcut.
-func SetShortcut(w http.ResponseWriter, r *http.Request) {
+// Posting will save the "first" url found as the "first" shortform found.
+// You may pass shortforms as form params or in the url.
+func (s ShortcutHandler) Post(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
-	shortcut, ok := vars["shortcut"]
+	shortform, ok := vars["shortform"]
 	r.ParseForm()
 	if !ok {
-		sc, ok := r.Form["shortcut"]
+		sc, ok := r.Form["shortform"]
 		if !ok || len(sc) == 0 {
-			http.Error(w, "Shortcut was not supplied", 400)
+			http.Error(w, "Shortcut was not supplied", http.StatusBadRequest)
 			return
 		}
-		shortcut = sc[0]
+		shortform = sc[0]
 	}
 
 	urls := r.Form["url"]
 
 	if len(urls) > 0 {
-		url := NormalizeUrl(urls[0])
-		print("Setting ", shortcut, " to ", url, "\n")
-		index.Index(url, Shortcut{
-			Url: url,
-			ShortForm: shortcut,
-		})
-		http.Redirect(w, r, url, 307)
+		url := urls[0]
+		log.Print("Setting ", shortform, " to ", url, "\n")
+		normalizedUrl := s.index.SetShortcut(url, shortform)
+		http.Redirect(w, r, normalizedUrl, http.StatusSeeOther)
 	} else {
-		http.Error(w, "URL was not supplied", 400)
+		http.Error(w, "URL was not supplied", http.StatusBadRequest)
 	}
 }
 
-func connectToBleve(indexFilePath string) bleve.Index {
-	if _, err := os.Stat(indexFilePath); err != nil {
-		index, err := bleve.New(indexFilePath, bleve.NewIndexMapping())
-		if err != nil {
-			log.Fatal(err)
-		}
-		return index
-	 } else {
-		 index, err := bleve.Open(indexFilePath)
-		 if err != nil {
-			 log.Fatal(err)
-		 }
-		 return index
-	 }
-}
-
-func main () {
-
+func main() {
+	handler := ShortcutHandler{shortcut.NewIndex("links.bleve")}
 	r := mux.NewRouter()
 
 	r.HandleFunc("/index.html", ShowForm)
-	r.HandleFunc("/", func (w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, "/index.html", 307)
+	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		http.Redirect(w, r, "/index.html", http.StatusMovedPermanently)
 	}).Methods("GET")
 
-	r.HandleFunc("/{shortcut}", FindShortcut).Methods("GET")
-	r.HandleFunc("/", SetShortcut).Methods("POST")
-	r.HandleFunc("/{shortcut}", SetShortcut).Methods("POST")
+	r.HandleFunc("/{shortcut}", handler.Get).Methods("GET")
+	r.HandleFunc("/", handler.Post).Methods("POST")
+	r.HandleFunc("/{shortcut}", handler.Post).Methods("POST")
 	http.Handle("/", r)
 
-	log.Fatal(http.ListenAndServe(":80", nil))
-
+	log.Fatal(http.ListenAndServe(":8080", nil))
 }
