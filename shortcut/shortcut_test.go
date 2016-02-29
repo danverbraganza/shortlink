@@ -41,9 +41,16 @@ func TestRetrieveShortcutSimpleBlueFull(t *testing.T) {
 	assertEqual(t, "http://bluemoon.org", res[0].Url)
 }
 
-// Let's set a shortcut, and then retrieve it by Description.
-func TestAddShortcutDescription(t *testing.T) {
+func TestGetShortcutDescription(t *testing.T) {
 	res, sole, err := testIndex.FindShortcut("page of")
+	assertEqual(t, false, sole)
+	assertEqual(t, nil, err)
+	assertEqual(t, 1, len(res))
+	assertEqual(t, "http://reddit.com", res[0].Url)
+}
+
+func TestGetShortcutDescriptionDisjoint(t *testing.T) {
+	res, sole, err := testIndex.FindShortcut("internet page")
 	assertEqual(t, false, sole)
 	assertEqual(t, nil, err)
 	assertEqual(t, 1, len(res))

@@ -8,6 +8,7 @@ import (
 
 	"github.com/blevesearch/bleve"
 	_ "github.com/blevesearch/bleve/analysis/analyzers/keyword_analyzer"
+	_ "github.com/blevesearch/bleve/analysis/analyzers/web"
 )
 
 //A Shortcut is a mapping from a shortform string to an alternative url.
@@ -57,7 +58,7 @@ func setUpBleve(indexFilePath string) (bleve.Index, error) {
 	shortcutMapping.AddFieldMappingsAt("ShortForm", shortFormFieldMapping)
 
 	descriptionFieldMapping := bleve.NewTextFieldMapping()
-	descriptionFieldMapping.Analyzer = "en"
+	descriptionFieldMapping.Analyzer = "web"
 	descriptionFieldMapping.IncludeTermVectors = true
 	shortcutMapping.AddFieldMappingsAt("Description", descriptionFieldMapping)
 
