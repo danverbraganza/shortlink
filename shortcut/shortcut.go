@@ -49,7 +49,7 @@ func NormalizeUrl(s string) string {
 	return u.String()
 }
 
-func SetUpBleve(indexFilePath string) (bleve.Index, error) {
+func setUpBleve(indexFilePath string) (bleve.Index, error) {
 	shortcutMapping := bleve.NewDocumentMapping()
 
 	shortFormFieldMapping := bleve.NewTextFieldMapping()
@@ -69,7 +69,7 @@ func SetUpBleve(indexFilePath string) (bleve.Index, error) {
 
 func NewIndex(indexFilePath string) Index {
 	if _, err := os.Stat(indexFilePath); err != nil {
-		index, err := SetUpBleve(indexFilePath)
+		index, err := setUpBleve(indexFilePath)
 
 		if err != nil {
 			log.Fatal(err)
@@ -84,13 +84,10 @@ func NewIndex(indexFilePath string) Index {
 	return Index{index}
 }
 
-func (i Index) SetShortcut(url, shortform, description string) (normalizedUrl string) {
-	normalizedUrl = NormalizeUrl(url)
-	i.Index.Index(normalizedUrl, Shortcut{
-		Url:         normalizedUrl,
-		ShortForm:   shortform,
-		Description: description,
-	})
+func (i Index) AddShortcut(s Shortcut) (normalizedUrl string) {
+	normalizedUrl = NormalizeUrl(s.Url)
+	s.Url = normalizedUrl
+	i.Index.Index(s.ShortForm, s)
 	return
 }
 
@@ -99,7 +96,6 @@ func (i Index) SetShortcut(url, shortform, description string) (normalizedUrl st
 // the text. Results is a list of 0, 1 or more shortcuts that were found. If
 // sole is true, that result was an absolute match.
 func (i Index) FindShortcut(query string) (results []Shortcut, sole bool, err error) {
-	log.Print(query)
 	sole = true
 	termQ := bleve.NewTermQuery(query).SetField("ShortForm")
 	termSR := bleve.NewSearchRequest(termQ)
@@ -111,13 +107,14 @@ func (i Index) FindShortcut(query string) (results []Shortcut, sole bool, err er
 	if len(searchResult.Hits) == 0 {
 		sole = false
 		// Didn't find anything. Let's widen our search.
-		q := bleve.NewMatchPhraseQuery(query) //.SetField("*")
+		q := bleve.NewQueryStringQuery(query).SetField("*")
 		matchSR := bleve.NewSearchRequest(q)
 		matchSR.Fields = []string{"Url", "ShortForm", "Description"}
 		searchResult, err = i.Search(matchSR)
 		if err != nil {
 			return nil, false, err
 		}
+		log.Print(searchResult.Hits)
 	}
 
 	for _, result := range searchResult.Hits {

@@ -98,7 +98,11 @@ func (s ShortcutHandler) Post(w http.ResponseWriter, r *http.Request) {
 			description = fetcher.FindDescription(normalizedUrl)
 		}
 		log.Print("Setting ", shortform, " to ", normalizedUrl, ": ", description)
-		s.index.SetShortcut(url, shortform, description)
+		s.index.AddShortcut(shortcut.Shortcut{
+			ShortForm:   shortform,
+			Url:         normalizedUrl,
+			Description: description,
+		})
 	}()
 }
 

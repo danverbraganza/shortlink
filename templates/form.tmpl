@@ -9,6 +9,12 @@ If description is left blank, attempt to find a description: <input type="checkb
 <input type="submit">
 </form>
 </center>
-{{.Shortcuts}}
+
+<ol>
+{{range .Shortcuts}}
+        <li> <a href="{{.Url}}">{{.Url}}</a>&mdash;{{.ShortForm}}<br/>
+        <quote>{{.Description}}</quote>
+{{end}}
+</ol>
 </body>
 </html>
