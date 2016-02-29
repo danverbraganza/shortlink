@@ -1,5 +1,5 @@
-/**
-Server runs the http interface for this short linker.
+/*
+Server runs the http interface for this link shortener.
 
 Author: Danver Braganza
 */
@@ -25,35 +25,35 @@ type ShortcutHandler struct {
 func (s ShortcutHandler) Get(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 
-	query := vars["shortcut"]
+	query := vars["shortform"]
 
-	results, err := s.index.FindShortcut(query)
+	results, sole, err := s.index.FindShortcut(query)
 
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
-	log.Print(results)
-
-	switch len(results) {
-	case 0:
-		s.ShowForm(w, r)
-	case 1:
-		http.Redirect(w, r, results[0], http.StatusSeeOther)
-	default:
-		// TODO(danver): Handle the multiple case.
-		s.ShowForm(w, r)
+	if sole {
+		http.Redirect(w, r, results[0].Url, http.StatusSeeOther)
+		return
 	}
+	s.ShowForm(w, r, results)
 }
 
 // ShowForm shows a nice form where the user can enter a new url.
-func (s ShortcutHandler) ShowForm(w http.ResponseWriter, r *http.Request) {
+func (s ShortcutHandler) ShowForm(w http.ResponseWriter, r *http.Request, partMatch []shortcut.Shortcut) {
 	vars := mux.Vars(r)
-	shortcut := vars["shortcut"]
+	sf := vars["shortform"]
 	s.formTemplate.Execute(w, struct {
-		Shortcut string
-	}{shortcut})
+		ShortForm string
+		Shortcuts []shortcut.Shortcut
+	}{sf, partMatch})
+}
+
+// ShowForm shows a nice form where the user can enter a new url.
+func (s ShortcutHandler) ShowEmptyForm(w http.ResponseWriter, r *http.Request) {
+	s.ShowForm(w, r, nil)
 }
 
 // Post saves the "first" url found as the "first" shortform found.
@@ -74,16 +74,27 @@ func (s ShortcutHandler) Post(w http.ResponseWriter, r *http.Request) {
 		shortform = sc[0]
 	}
 
+	if _, sole, _ := s.index.FindShortcut(shortform); sole {
+		http.Error(w, "Shortcut already exists.", http.StatusBadRequest)
+		return
+	}
+
 	urls := r.Form["url"]
 	if len(urls) == 0 {
 		http.Error(w, "URL was not supplied", http.StatusBadRequest)
 		return
 	}
-
 	url := urls[0]
-	log.Print("Setting ", shortform, " to ", url, "\n")
-	normalizedUrl := s.index.SetShortcut(url, shortform)
+
+	var description string
+	if descriptions, ok := r.Form["description"]; ok {
+		description = descriptions[0]
+	}
+	normalizedUrl := shortcut.NormalizeUrl(shortform)
 	http.Redirect(w, r, normalizedUrl, http.StatusSeeOther)
+	log.Print("Setting ", shortform, " to ", normalizedUrl)
+	go s.index.SetShortcut(url, shortform, description)
+
 }
 
 func main() {
@@ -93,14 +104,14 @@ func main() {
 	}
 	r := mux.NewRouter()
 
-	r.HandleFunc("/index.html", handler.ShowForm)
+	r.HandleFunc("/index.html", handler.ShowEmptyForm)
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/index.html", http.StatusMovedPermanently)
 	}).Methods("GET")
 
-	r.HandleFunc("/{shortcut}", handler.Get).Methods("GET")
+	r.HandleFunc("/{shortform:.*}", handler.Get).Methods("GET")
 	r.HandleFunc("/", handler.Post).Methods("POST")
-	r.HandleFunc("/{shortcut}", handler.Post).Methods("POST")
+	r.HandleFunc("/{shortform:.*}", handler.Post).Methods("POST")
 	http.Handle("/", r)
 
 	log.Fatal(http.ListenAndServe(":8080", nil))

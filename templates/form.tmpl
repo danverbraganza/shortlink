@@ -2,11 +2,12 @@
 <body>
 <form action="/" method="POST">
 <center>
-Redirect text: <input type="text" name="shortform" value="{{.Shortcut}}" required=truez><br/>
+Redirect text: <input type="text" name="shortform" value="{{.ShortForm}}" required=true><br/>
 Url to redirect to: <input type="text" name="url" required=true><br/>
 Description: <input type="textarea" name="description"><br/>
 <input type="submit">
 </form>
 </center>
+{{.Shortcuts}}
 </body>
 </html>
