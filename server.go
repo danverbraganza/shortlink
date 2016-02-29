@@ -13,6 +13,7 @@ import (
 
 	"github.com/gorilla/mux"
 
+	"github.com/danverbraganza/shortlink/fetcher"
 	"github.com/danverbraganza/shortlink/shortcut"
 )
 
@@ -90,11 +91,15 @@ func (s ShortcutHandler) Post(w http.ResponseWriter, r *http.Request) {
 	if descriptions, ok := r.Form["description"]; ok {
 		description = descriptions[0]
 	}
-	normalizedUrl := shortcut.NormalizeUrl(shortform)
+	normalizedUrl := shortcut.NormalizeUrl(url)
 	http.Redirect(w, r, normalizedUrl, http.StatusSeeOther)
-	log.Print("Setting ", shortform, " to ", normalizedUrl)
-	go s.index.SetShortcut(url, shortform, description)
-
+	go func() {
+		if description == "" && r.Form["attempt"] != nil {
+			description = fetcher.FindDescription(normalizedUrl)
+		}
+		log.Print("Setting ", shortform, " to ", normalizedUrl, ": ", description)
+		s.index.SetShortcut(url, shortform, description)
+	}()
 }
 
 func main() {
