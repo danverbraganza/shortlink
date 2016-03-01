@@ -1,4 +1,4 @@
-//Shortcut contains types and methods for manipulating shortcuts.
+//Package Shortcut contains types and methods for manipulating shortcuts.
 package shortcut
 
 import (
@@ -7,25 +7,27 @@ import (
 	"os"
 
 	"github.com/blevesearch/bleve"
+	// Import the following two analyzers.
 	_ "github.com/blevesearch/bleve/analysis/analyzers/keyword_analyzer"
 	_ "github.com/blevesearch/bleve/analysis/analyzers/web"
 )
 
 //A Shortcut is a mapping from a shortform string to an alternative url.
 type Shortcut struct {
-	Url,
+	URL,
 	ShortForm,
 	Description string
 }
 
-// Shortcut implements bleve.Classifier
+// Type ensures that Shortcut implements bleve.Classifier
 func (Shortcut) Type() string {
 	return "Shortcut"
 }
 
+// FromFields creates a Shortcut from a dictionary of fields.
 func FromFields(fields map[string]interface{}) Shortcut {
 	retval := Shortcut{
-		Url:       fields["Url"].(string),
+		URL:       fields["URL"].(string),
 		ShortForm: fields["ShortForm"].(string),
 	}
 
@@ -41,8 +43,8 @@ type Index struct {
 	bleve.Index
 }
 
-// NormalizeUrl takes the urls that we get and puts some sane defaults to it.
-func NormalizeUrl(s string) string {
+// NormalizeURL takes the urls that we get and puts some sane defaults to it.
+func NormalizeURL(s string) string {
 	u, _ := url.Parse(s)
 	if u.Scheme == "" {
 		u.Scheme = "http"
@@ -68,6 +70,7 @@ func setUpBleve(indexFilePath string) (bleve.Index, error) {
 	return bleve.New(indexFilePath, indexMapping)
 }
 
+// NewIndex creates a new Shotcut.Index, initialized from a file.
 func NewIndex(indexFilePath string) Index {
 	if _, err := os.Stat(indexFilePath); err != nil {
 		index, err := setUpBleve(indexFilePath)
@@ -85,9 +88,10 @@ func NewIndex(indexFilePath string) Index {
 	return Index{index}
 }
 
-func (i Index) AddShortcut(s Shortcut) (normalizedUrl string) {
-	normalizedUrl = NormalizeUrl(s.Url)
-	s.Url = normalizedUrl
+// AddShortcut adds a given shortcut to this index, and returns the normalized URL string.
+func (i Index) AddShortcut(s Shortcut) (normalizedURL string) {
+	normalizedURL = NormalizeURL(s.URL)
+	s.URL = normalizedURL
 	i.Index.Index(s.ShortForm, s)
 	return
 }
@@ -100,7 +104,7 @@ func (i Index) FindShortcut(query string) (results []Shortcut, sole bool, err er
 	sole = true
 	termQ := bleve.NewTermQuery(query).SetField("ShortForm")
 	termSR := bleve.NewSearchRequest(termQ)
-	termSR.Fields = []string{"Url", "ShortForm", "Description"}
+	termSR.Fields = []string{"URL", "ShortForm", "Description"}
 	searchResult, err := i.Search(termSR)
 	if err != nil {
 		return nil, false, err
@@ -110,7 +114,7 @@ func (i Index) FindShortcut(query string) (results []Shortcut, sole bool, err er
 		// Didn't find anything. Let's widen our search.
 		q := bleve.NewQueryStringQuery(query).SetField("*")
 		matchSR := bleve.NewSearchRequest(q)
-		matchSR.Fields = []string{"Url", "ShortForm", "Description"}
+		matchSR.Fields = []string{"URL", "ShortForm", "Description"}
 		searchResult, err = i.Search(matchSR)
 		if err != nil {
 			return nil, false, err

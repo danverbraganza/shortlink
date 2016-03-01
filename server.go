@@ -17,6 +17,7 @@ import (
 	"github.com/danverbraganza/shortlink/shortcut"
 )
 
+// ShortcutHandler is a struct that handles all requests.
 type ShortcutHandler struct {
 	index        shortcut.Index
 	formTemplate *template.Template
@@ -36,7 +37,7 @@ func (s ShortcutHandler) Get(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if sole {
-		http.Redirect(w, r, results[0].Url, http.StatusSeeOther)
+		http.Redirect(w, r, results[0].URL, http.StatusSeeOther)
 		return
 	}
 	s.ShowForm(w, r, results)
@@ -52,7 +53,7 @@ func (s ShortcutHandler) ShowForm(w http.ResponseWriter, r *http.Request, partMa
 	}{sf, partMatch})
 }
 
-// ShowForm shows a nice form where the user can enter a new url.
+// ShowEmptyForm specifically shows an empty form.
 func (s ShortcutHandler) ShowEmptyForm(w http.ResponseWriter, r *http.Request) {
 	s.ShowForm(w, r, nil)
 }
@@ -91,16 +92,16 @@ func (s ShortcutHandler) Post(w http.ResponseWriter, r *http.Request) {
 	if descriptions, ok := r.Form["description"]; ok {
 		description = descriptions[0]
 	}
-	normalizedUrl := shortcut.NormalizeUrl(url)
-	http.Redirect(w, r, normalizedUrl, http.StatusSeeOther)
+	normalizedURL := shortcut.NormalizeURL(url)
+	http.Redirect(w, r, normalizedURL, http.StatusSeeOther)
 	go func() {
 		if description == "" && r.Form["attempt"] != nil {
-			description = fetcher.FindDescription(normalizedUrl)
+			description = fetcher.FindDescription(normalizedURL)
 		}
-		log.Print("Setting ", shortform, " to ", normalizedUrl, ": ", description)
+		log.Print("Setting ", shortform, " to ", normalizedURL, ": ", description)
 		s.index.AddShortcut(shortcut.Shortcut{
 			ShortForm:   shortform,
-			Url:         normalizedUrl,
+			URL:         normalizedURL,
 			Description: description,
 		})
 	}()

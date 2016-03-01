@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-var BLEVE_TEST_FILE = "testfile.bleve"
+var bleveTestFile = "testfile.bleve"
 
 var testIndex Index
 
@@ -22,7 +22,7 @@ func TestRetrieveShortcutSimpleRed(t *testing.T) {
 	assertEqual(t, true, sole)
 	assertEqual(t, nil, err)
 	assertEqual(t, 1, len(res))
-	assertEqual(t, "http://reddit.com", res[0].Url)
+	assertEqual(t, "http://reddit.com", res[0].URL)
 }
 
 func TestRetrieveShortcutSimpleBlue(t *testing.T) {
@@ -30,7 +30,7 @@ func TestRetrieveShortcutSimpleBlue(t *testing.T) {
 	assertEqual(t, true, sole)
 	assertEqual(t, nil, err)
 	assertEqual(t, 1, len(res))
-	assertEqual(t, "http://bluemoon.org", res[0].Url)
+	assertEqual(t, "http://bluemoon.org", res[0].URL)
 }
 
 func TestRetrieveShortcutSimpleBlueFull(t *testing.T) {
@@ -38,7 +38,7 @@ func TestRetrieveShortcutSimpleBlueFull(t *testing.T) {
 	assertEqual(t, true, sole)
 	assertEqual(t, nil, err)
 	assertEqual(t, 1, len(res))
-	assertEqual(t, "http://bluemoon.org", res[0].Url)
+	assertEqual(t, "http://bluemoon.org", res[0].URL)
 }
 
 func TestGetShortcutDescription(t *testing.T) {
@@ -46,7 +46,7 @@ func TestGetShortcutDescription(t *testing.T) {
 	assertEqual(t, false, sole)
 	assertEqual(t, nil, err)
 	assertEqual(t, 1, len(res))
-	assertEqual(t, "http://reddit.com", res[0].Url)
+	assertEqual(t, "http://reddit.com", res[0].URL)
 }
 
 func TestGetShortcutDescriptionDisjoint(t *testing.T) {
@@ -54,7 +54,7 @@ func TestGetShortcutDescriptionDisjoint(t *testing.T) {
 	assertEqual(t, false, sole)
 	assertEqual(t, nil, err)
 	assertEqual(t, 1, len(res))
-	assertEqual(t, "http://reddit.com", res[0].Url)
+	assertEqual(t, "http://reddit.com", res[0].URL)
 }
 
 func TestGetShortcutsDescription(t *testing.T) {
@@ -62,7 +62,7 @@ func TestGetShortcutsDescription(t *testing.T) {
 	assertEqual(t, false, sole)
 	assertEqual(t, nil, err)
 	assertEqual(t, 2, len(res))
-	assertEqual(t, "http://reddit.com", res[0].Url)
+	assertEqual(t, "http://reddit.com", res[0].URL)
 }
 
 func TestGetDuplicateByDescription(t *testing.T) {
@@ -70,38 +70,38 @@ func TestGetDuplicateByDescription(t *testing.T) {
 	assertEqual(t, false, sole)
 	assertEqual(t, nil, err)
 	assertEqual(t, 2, len(res))
-	//	assertEqual(t, "http://reddit.com", res[0].Url)
+	//	assertEqual(t, "http://reddit.com", res[0].URL)
 }
 
 func TestMain(m *testing.M) {
 	flag.Parse()
-	if os.RemoveAll(BLEVE_TEST_FILE) != nil {
+	if os.RemoveAll(bleveTestFile) != nil {
 		panic("Something went wrong with the file system.")
 	}
 
-	testIndex = NewIndex(BLEVE_TEST_FILE)
+	testIndex = NewIndex(bleveTestFile)
 
 	testIndex.AddShortcut(Shortcut{
 		ShortForm:   "blue",
-		Url:         "bluemoon.org",
+		URL:         "bluemoon.org",
 		Description: "A total dream of a website--Blue Mood\n\n James Front.",
 	})
 
 	testIndex.AddShortcut(Shortcut{
 		ShortForm:   "red",
-		Url:         "reddit.com",
+		URL:         "reddit.com",
 		Description: "Reddit.com--The front page of the internet.",
 	})
 
 	testIndex.AddShortcut(Shortcut{
 		ShortForm:   "blue-is-more-violet-than-red",
-		Url:         "bluemoon.org",
+		URL:         "bluemoon.org",
 		Description: "This is a duplicate",
 	})
 
 	testIndex.AddShortcut(Shortcut{
 		ShortForm:   "2016-payroll",
-		Url:         "ftp://myserv.org/files/secretfile",
+		URL:         "ftp://myserv.org/files/secretfile",
 		Description: "This is a duplicate",
 	})
 
