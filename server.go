@@ -7,9 +7,12 @@ Author: Danver Braganza
 package main
 
 import (
+	"flag"
 	"html/template"
 	"log"
 	"net/http"
+	"path"
+	"strconv"
 
 	"github.com/gorilla/mux"
 
@@ -108,9 +111,14 @@ func (s ShortcutHandler) Post(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	indexFile := flag.String("indexfile", "links.bleve", "The location of the index file.")
+	templateDir := flag.String("templates", "templates", "The location of the templates directory.")
+	port := flag.Int("port", 8080, "The port to which to bind.")
+	flag.Parse()
+
 	handler := ShortcutHandler{
-		shortcut.NewIndex("links.bleve"),
-		template.Must(template.ParseFiles("templates/form.tmpl")),
+		shortcut.NewIndex(*indexFile),
+		template.Must(template.ParseFiles(path.Join(*templateDir, "form.tmpl"))),
 	}
 	r := mux.NewRouter()
 
@@ -124,5 +132,5 @@ func main() {
 	r.HandleFunc("/{shortform:.*}", handler.Post).Methods("POST")
 	http.Handle("/", r)
 
-	log.Fatal(http.ListenAndServe(":8080", nil))
+	log.Fatal(http.ListenAndServe(":" + strconv.Itoa(*port), nil))
 }
