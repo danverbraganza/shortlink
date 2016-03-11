@@ -24,6 +24,9 @@ import (
 type ShortcutHandler struct {
 	index        shortcut.Index
 	formTemplate *template.Template
+	servicename  string
+	servicehost  string
+	port         int
 }
 
 // Get looks up the given shortcut requested in the index.
@@ -50,10 +53,29 @@ func (s ShortcutHandler) Get(w http.ResponseWriter, r *http.Request) {
 func (s ShortcutHandler) ShowForm(w http.ResponseWriter, r *http.Request, partMatch []shortcut.Shortcut) {
 	vars := mux.Vars(r)
 	sf := vars["shortform"]
-	s.formTemplate.Execute(w, struct {
-		ShortForm string
-		Shortcuts []shortcut.Shortcut
-	}{sf, partMatch})
+	s.formTemplate.ExecuteTemplate(w, "form.tmpl",
+		struct {
+			ShortForm   string
+			Shortcuts   []shortcut.Shortcut
+			ServiceName string
+			ServiceHost string
+			Port        int
+		}{sf, partMatch, s.servicename, s.servicehost, s.port},
+	)
+}
+
+// ServeOpenSearchDescription serves the Search Description of this page.
+func (s ShortcutHandler) ServeOpenSearchDescription(w http.ResponseWriter, r *http.Request) {
+
+	w.Header().Set("Content-Type", "application/opensearchdescription+xml")
+	w.Write([]byte(`<?xml version="1.0" encoding="utf-8"?>`))
+	s.formTemplate.ExecuteTemplate(w, "opensearchdescription.tmpl",
+		struct {
+			ServiceName string
+			ServiceHost string
+			Port        int
+		}{s.servicename, s.servicehost, s.port},
+	)
 }
 
 // ShowEmptyForm specifically shows an empty form.
@@ -114,15 +136,24 @@ func main() {
 	indexFile := flag.String("indexfile", "links.bleve", "The location of the index file.")
 	templateDir := flag.String("templates", "templates", "The location of the templates directory.")
 	port := flag.Int("port", 8080, "The port to which to bind.")
+	servicename := flag.String("servicename", "shortlink", "The name of this service.")
+	servicehost := flag.String("servicehost", "localhost", "Where this service is hosted.")
 	flag.Parse()
 
 	handler := ShortcutHandler{
 		shortcut.NewIndex(*indexFile),
-		template.Must(template.ParseFiles(path.Join(*templateDir, "form.tmpl"))),
+		template.Must(template.ParseFiles(
+			path.Join(*templateDir, "form.tmpl"),
+			path.Join(*templateDir, "opensearchdescription.tmpl"),
+		)),
+		*servicename,
+		*servicehost,
+		*port,
 	}
 	r := mux.NewRouter()
 
 	r.HandleFunc("/index.html", handler.ShowEmptyForm)
+	r.HandleFunc("/opensearch.xml", handler.ServeOpenSearchDescription)
 	r.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		http.Redirect(w, r, "/index.html", http.StatusMovedPermanently)
 	}).Methods("GET")
@@ -132,5 +163,5 @@ func main() {
 	r.HandleFunc("/{shortform:.*}", handler.Post).Methods("POST")
 	http.Handle("/", r)
 
-	log.Fatal(http.ListenAndServe(":" + strconv.Itoa(*port), nil))
+	log.Fatal(http.ListenAndServe(":"+strconv.Itoa(*port), nil))
 }

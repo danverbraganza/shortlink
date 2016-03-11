@@ -1,20 +1,25 @@
 <html>
-<body>
-<form action="/" method="POST">
-<center>
-Redirect text: <input type="text" name="shortform" value="{{.ShortForm}}" required=true><br/>
-Url to redirect to: <input type="text" name="url" required=true><br/>
-Description: <input type="textarea" name="description"><br/>
-If description is left blank, attempt to find a description: <input type="checkbox" name="attempt" checked="true"></br>
-<input type="submit">
-</form>
-</center>
-
-<ol>
-{{range .Shortcuts}}
-        <li> <a href="{{.Url}}">{{.Url}}</a>&mdash;{{.ShortForm}}<br/>
+  <head>
+    <link rel="search" href="http://{{.ServiceHost}}:{{.Port}}/opensearch.xml"
+          type="application/opensearchdescription+xml"
+                title="{{.ServiceName}}" />
+  </head>
+  <body>
+    <form action="/" method="POST">
+      <center>
+        Redirect text: <input type="text" name="shortform" value="{{.ShortForm}}" required=true><br/>
+        Url to redirect to: <input type="text" name="url" required=true><br/>
+        Description: <input type="textarea" name="description"><br/>
+        If description is left blank, attempt to find a description: <input type="checkbox" name="attempt" checked="true"></br>
+        <input type="submit">
+    </form>
+    </center>
+    <ol>
+      {{range .Shortcuts}}
+      <li> <a href="{{.Url}}">{{.Url}}</a>&mdash
+        <a href="http://{{.ServiceHost}}:{{.Port}}/{{.ShortForm}}">{{.ServiceHost}}:{{.Port}}/{{.ShortForm}}</a><br/>
         <quote>{{.Description}}</quote>
-{{end}}
-</ol>
-</body>
+        {{end}}
+    </ol>
+  </body>
 </html>
