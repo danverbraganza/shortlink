@@ -16,7 +16,7 @@
     </center>
     <ol>
       {{range .Shortcuts}}
-      <li> <a href="{{.Url}}">{{.Url}}</a>&mdash
+      <li> <a href="{{.URL}}">{{.URL}}</a>&mdash
         <a href="http://{{.ServiceHost}}:{{.Port}}/{{.ShortForm}}">{{.ServiceHost}}:{{.Port}}/{{.ShortForm}}</a><br/>
         <quote>{{.Description}}</quote>
         {{end}}
